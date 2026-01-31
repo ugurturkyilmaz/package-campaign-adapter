@@ -1,89 +1,67 @@
 pipeline {
   agent any
-
   options { timestamps() }
 
   parameters {
-    choice(
-      name: 'VERSION_BUMP',
-      choices: ['none', 'patch', 'minor', 'major'],
-      description: 'Version bump type'
-    )
+    string(name: 'MS1_PORT', defaultValue: '8081', description: 'Host port for MS1')
+    string(name: 'CONTAINER_NAME', defaultValue: 'ms1-adapter', description: 'Docker container name')
+    string(name: 'IMAGE_NAME', defaultValue: 'ms1-adapter', description: 'Docker image name')
   }
 
   environment {
-    IMAGE_NAME = "ms1-adapter"
-    CONTAINER_NAME = "ms1-adapter"
+    DOCKER_PATH = "/Applications/Docker.app/Contents/Resources/bin:/usr/local/bin:/opt/homebrew/bin"
   }
 
   stages {
+    stage('Checkout') {
+      steps { checkout scm }
+    }
 
-    stage('Verify project') {
+    stage('Build') {
       steps {
         sh '''
-          test -d "${PROJECT_DIR}" || (echo "PROJECT_DIR not found: ${PROJECT_DIR}" && exit 1)
-          ls -la "${PROJECT_DIR}"
+          chmod +x ./gradlew
+
+          export JAVA_HOME=$(/usr/libexec/java_home -v 21)
+          export PATH="$JAVA_HOME/bin:$PATH"
+
+          java -version
+          ./gradlew clean :adapter-service:bootJar
         '''
-      }
-    }
-
-    stage('Version bump') {
-      when { expression { params.VERSION_BUMP != 'none' } }
-      steps {
-        dir("${params.PROJECT_DIR}") {
-          sh '''
-            chmod +x ./gradlew
-            if [ "${VERSION_BUMP}" = "patch" ]; then ./gradlew bumpPatch; fi
-            if [ "${VERSION_BUMP}" = "minor" ]; then ./gradlew bumpMinor; fi
-            if [ "${VERSION_BUMP}" = "major" ]; then ./gradlew bumpMajor; fi
-          '''
-        }
-      }
-    }
-
-    stage('Build (bootJar)') {
-      steps {
-        dir("${params.PROJECT_DIR}") {
-          sh '''
-            chmod +x ./gradlew
-            ./gradlew clean :adapter-service:bootJar
-          '''
-        }
       }
     }
 
     stage('Docker build') {
       steps {
-        dir("${params.PROJECT_DIR}") {
-          sh '''
-            VERSION=$(grep "^version=" gradle.properties | cut -d= -f2 | tr -d '[:space:]')
-            echo "Project version: $VERSION"
-            echo "$VERSION" > .jenkins_version
+        sh '''
+          export PATH="${DOCKER_PATH}:$PATH"
+          docker --version
 
+          VERSION=$(grep "^version=" gradle.properties | cut -d= -f2 | tr -d '[:space:]')
+          test -n "$VERSION" || (echo "version empty in gradle.properties" && exit 1)
+          echo "VERSION=$VERSION"
 
-            docker --version
-            docker build -t ${IMAGE_NAME}:$VERSION -f adapter-service/Dockerfile adapter-service
-          '''
-        }
+          docker build -t ${IMAGE_NAME}:$VERSION -f adapter-service/Dockerfile adapter-service
+          echo "$VERSION" > .jenkins_version
+        '''
       }
     }
 
-    stage('Docker run (deploy)') {
+    stage('Docker deploy') {
       steps {
-        dir("${params.PROJECT_DIR}") {
-          sh '''
-            VERSION=$(cat .jenkins_version)
-            echo "Deploying ${IMAGE_NAME}:$VERSION on port 8081"
+        sh '''
+          export PATH="${DOCKER_PATH}:$PATH"
+          VERSION=$(cat .jenkins_version)
 
+          docker rm -f ${CONTAINER_NAME} >/dev/null 2>&1 || true
 
-            docker rm -f ${CONTAINER_NAME} >/dev/null 2>&1 || true
+          docker run -d --name ${CONTAINER_NAME} \
+            -p ${MS1_PORT}:8081 \
+            ${IMAGE_NAME}:$VERSION
 
-
-            docker run -d --name ${CONTAINER_NAME} \
-              -p 8081 \
-              ${IMAGE_NAME}:$VERSION
-          '''
-        }
+          sleep 2
+          curl -i http://127.0.0.1:${MS1_PORT}/v1/packages || true
+        '''
       }
     }
   }
