@@ -58,12 +58,13 @@ pipeline {
     stage('Build') {
       steps {
         sh '''
+        ./gradlew clean :adapter-client:publishToMavenLocal :adapter-service:bootJar
+
           chmod +x ./gradlew
 
           export JAVA_HOME=$(/usr/libexec/java_home -v 21)
           export PATH="$JAVA_HOME/bin:$PATH"
 
-          java -version
           ./gradlew clean :adapter-service:bootJar
         '''
       }
