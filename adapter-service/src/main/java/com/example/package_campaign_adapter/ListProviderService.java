@@ -15,9 +15,9 @@ public class ListProviderService {
         System.out.println("ALTYAPIYA GİDİLDİ (package)");
 
         return List.of(
-                new PackageDto("PKG-001", "Starter Package", new BigDecimal("99.90")),
-                new PackageDto("PKG-002", "Plus Package", new BigDecimal("149.90")),
-                new PackageDto("PKG-003", "Max Package", new BigDecimal("199.90"))
+                new PackageDto("PKG-001", "Starter Package", new BigDecimal("99.90"), "Starter desc"),
+                new PackageDto("PKG-002", "Plus Package", new BigDecimal("149.90"), "Plus desc"),
+                new PackageDto("PKG-003", "Max Package", new BigDecimal("199.90"), "Max desc")
         );
     }
 }
