@@ -4,20 +4,10 @@ pipeline {
   options { timestamps() }
 
   parameters {
-    string(
-      name: 'PROJECT_DIR',
-      defaultValue: '/Users/turkyilmaz/Downloads/package-campaign-adapter',
-      description: 'Local project root (contains adapter-client and adapter-service)'
-    )
     choice(
       name: 'VERSION_BUMP',
       choices: ['none', 'patch', 'minor', 'major'],
       description: 'Version bump type'
-    )
-    string(
-      name: 'MS1_PORT',
-      defaultValue: '8081',
-      description: 'Host port for MS1'
     )
   }
 
@@ -70,7 +60,7 @@ pipeline {
             echo "Project version: $VERSION"
             echo "$VERSION" > .jenkins_version
 
-            # Dockerfile: adapter-service klasöründe olmalı (aşağıda verdim)
+
             docker --version
             docker build -t ${IMAGE_NAME}:$VERSION -f adapter-service/Dockerfile adapter-service
           '''
@@ -83,14 +73,14 @@ pipeline {
         dir("${params.PROJECT_DIR}") {
           sh '''
             VERSION=$(cat .jenkins_version)
-            echo "Deploying ${IMAGE_NAME}:$VERSION on port ${MS1_PORT}"
+            echo "Deploying ${IMAGE_NAME}:$VERSION on port 8081"
 
-            # Eski container varsa kaldır
+
             docker rm -f ${CONTAINER_NAME} >/dev/null 2>&1 || true
 
-            # Yeni container'ı ayağa kaldır
+
             docker run -d --name ${CONTAINER_NAME} \
-              -p ${MS1_PORT}:8081 \
+              -p 8081 \
               ${IMAGE_NAME}:$VERSION
           '''
         }
