@@ -1,0 +1,7 @@
+services:
+  ms1:
+    build:
+      context: ./adapter-service
+      dockerfile: Dockerfile
+    ports:
+      - "8081:8081"

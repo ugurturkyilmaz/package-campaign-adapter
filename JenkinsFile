@@ -1,0 +1,56 @@
+pipeline {
+  agent any
+
+  parameters {
+    choice(name: 'BUMP', choices: ['none', 'patch', 'minor', 'major'], description: 'Version bump type for client+service')
+    booleanParam(name: 'DEPLOY_LOCAL', defaultValue: true, description: 'Run service locally after build')
+  }
+
+  environment {
+    // MS1 service module adın neyse ona göre güncelle
+    SERVICE_MODULE = "adapter-service"
+    CLIENT_MODULE  = "adapter-client"
+  }
+
+  stages {
+    stage('Checkout') {
+      steps { checkout scm }
+    }
+
+    stage('Bump Version') {
+      when { expression { params.BUMP != 'none' } }
+      steps {
+        script {
+          if (params.BUMP == 'patch') sh "./gradlew bumpPatch"
+          if (params.BUMP == 'minor') sh "./gradlew bumpMinor"
+          if (params.BUMP == 'major') sh "./gradlew bumpMajor"
+        }
+      }
+    }
+
+    stage('Build') {
+      steps {
+        sh "./gradlew clean build"
+      }
+    }
+
+    stage('Publish Client (local)') {
+      steps {
+        // Lokal test için mavenLocal'a publish edebilirsin (istersen ekleriz).
+        // Şimdilik jar output’u arşivleyelim:
+        sh "ls -la ${CLIENT_MODULE}/build/libs || true"
+      }
+    }
+
+    stage('Deploy') {
+      when { expression { return params.DEPLOY_LOCAL } }
+      steps {
+        // MS1’i lokalde ayağa kaldırma (deploy simülasyonu)
+        sh "./gradlew :${SERVICE_MODULE}:bootRun &"
+        // ufak bekleme + health check (opsiyonel)
+        sh "sleep 5"
+        sh "curl -i http://127.0.0.1:8081/actuator/health || true"
+      }
+    }
+  }
+}

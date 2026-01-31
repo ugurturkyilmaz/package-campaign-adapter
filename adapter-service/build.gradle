@@ -1,0 +1,17 @@
+plugins {
+	id "org.springframework.boot" version "4.0.2"
+}
+
+dependencies {
+	implementation project(":adapter-client")
+
+	implementation "org.springframework.boot:spring-boot-starter-web"
+	implementation "org.springframework.boot:spring-boot-starter-cache"
+	implementation "com.github.ben-manes.caffeine:caffeine"
+
+	testImplementation "org.springframework.boot:spring-boot-starter-test"
+}
+
+tasks.named("jar") {
+	enabled = false
+}

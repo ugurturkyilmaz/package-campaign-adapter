@@ -1,0 +1,25 @@
+plugins {
+	id "java-library"
+	id "maven-publish"
+}
+
+dependencies {
+
+	compileOnly "org.springframework.cloud:spring-cloud-starter-openfeign"
+}
+
+publishing {
+	publications {
+		mavenJava(MavenPublication) {
+			from components.java
+			groupId = project.group
+			artifactId = "adapter-client"
+			version = project.version
+		}
+	}
+	repositories { mavenLocal() }
+}
+
+tasks.jar {
+	enabled = true
+}

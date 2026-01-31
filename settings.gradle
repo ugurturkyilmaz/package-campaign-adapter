@@ -1,0 +1,3 @@
+rootProject.name = 'package-campaign-adapter'
+include("adapter-service")
+include("adapter-client")
