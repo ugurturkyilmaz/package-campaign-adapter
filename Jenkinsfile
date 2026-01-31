@@ -2,14 +2,10 @@ pipeline {
   agent any
   options { timestamps() }
 
-  parameters {
-    string(name: 'MS1_PORT', defaultValue: '8081', description: 'Host port for MS1')
-    string(name: 'CONTAINER_NAME', defaultValue: 'ms1-adapter', description: 'Docker container name')
-    string(name: 'IMAGE_NAME', defaultValue: 'ms1-adapter', description: 'Docker image name')
-  }
-
   environment {
     DOCKER_PATH = "/Applications/Docker.app/Contents/Resources/bin:/usr/local/bin:/opt/homebrew/bin"
+    IMAGE_NAME = "package-campaign-adapter"
+    CONTAINER_NAME = "package-campaign-adapter"
   }
 
   stages {
@@ -35,13 +31,13 @@ pipeline {
       steps {
         sh '''
           export PATH="${DOCKER_PATH}:$PATH"
-          docker --version
 
           VERSION=$(grep "^version=" gradle.properties | cut -d= -f2 | tr -d '[:space:]')
           test -n "$VERSION" || (echo "version empty in gradle.properties" && exit 1)
           echo "VERSION=$VERSION"
 
-          docker build -t ${IMAGE_NAME}:$VERSION -f adapter-service/Dockerfile adapter-service
+
+          docker build -t ${IMAGE_NAME}:${VERSION} -f adapter-service/Dockerfile adapter-service
           echo "$VERSION" > .jenkins_version
         '''
       }
@@ -56,7 +52,7 @@ pipeline {
           docker rm -f ${CONTAINER_NAME} >/dev/null 2>&1 || true
 
           docker run -d --name ${CONTAINER_NAME} \
-            -p ${MS1_PORT}:8081 \
+            -p 8081 \
             ${IMAGE_NAME}:$VERSION
 
           sleep 2
